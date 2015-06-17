@@ -18,20 +18,30 @@ Process to build the DOM tree:
   - The "text" field will be created to select only the specific text from "full_text" matching the definition above using regex.
 
 
-Second thoughts: it may be helpful to start with an ordered array of tags as they occur:
-  <html>,<head>,<title>,</title>,</head> etc...
-This array could then be used to build simple tree with just parent/child relationships (not worrying about parsing data just yet).
-Then it's possible to start with innermost child for data parsing and spread outward, which will help with situations of divs within divs that can't be easily handled by regex alone.  If we know what children to expect inside tags, it makes it easier to properly identify the right closing tag.
+Second thoughts:
+  It may be helpful to start with an ordered array of tags as they occur:
+    <html>,<head>,<title>,</title>,</head> etc...
+  This array could then be used to build simple tree with just parent/child relationships (not worrying about parsing data just yet).
+  Then it's possible to start with innermost child for data parsing and spread outward, which will help with situations of divs within divs that can't be easily handled by regex alone.  If we know what children to expect inside tags, it makes it easier to properly identify the right closing tag.
+
+  Now that I've got my tree, I can step through starting at the root to fill in the rest of the data:
+  - full_text:
+  - name:
+  - text:
+  - classes:
+  - id:
+
 
 =end
 
 
-Node = Struct.new(:name, :full_text, :text, :classes, :id, :children, :parent)
+Node = Struct.new(:name, :text, :classes, :id, :children, :parent)
 
 
 class DOMReader
 
   def initialize
+    @root = nil
   end
 
 
@@ -39,16 +49,8 @@ class DOMReader
     # load in .html file
     file_text = load_file(html_file)
 
-    # create document node as everything between <html> tags
-
-    # find first tag
-    next_tag = find_next_tag(file_text)
-
-    # capture everything between that tag and closing tag
-    capture_data = capture_between(next_tag, file_text)
-
-    # build node based on that capture
-    build_node(capture_data)
+    # build array of tags to ID parent/child relationships
+    build_relationships(file_text)
 
   end
 
@@ -59,31 +61,53 @@ class DOMReader
   def load_file(filename)
     input = File.read(filename)
 
-    # remove <!doctype html>
+    # This removes <!doctype html>
     input.match(/<!doctype html>/i).post_match.strip
   end
 
 
-  def find_next_tag(string)
-    string.match(/(<[a-z]+[1-6]*.*?>)/)[1]
+  def build_relationships(string)
+    all_tags = string.scan(/(\/?[a-z]+[1-6]*.*?)>(.*?)</m) # currently misses last </html> -> does not impact results
+
+    # use stack to handle parent/child relationships
+    relationship_stack = []
+
+    all_tags.each do |tag|
+      build_base_node(tag, relationship_stack)
+    end
+
   end
 
 
-  def capture_between(tag, string)
-    close_tag = tag.match(/<(\S+)\s?.*?>/)[1] # currently loses track if </div> w/in a </div>
-    text_match = string.match(/#{tag}(.*?)<\/#{close_tag}>/m)[1]
+  def build_base_node(tag, stack)
+    text = tag[1].strip
 
-    [tag, close_tag, text_match]
+    # if </close> tag, pop top stack item, put any leftover text onto the new top stack item (aka parent)
+    if tag[0].strip.include?("/")
+      stack.pop
+      stack.last[:text] << " #{text}" unless text.empty?
+
+    # if <open> tag, assign top stack item as parent, add self to parent's children array, and put self on top of stack
+    else
+      tag_data = parse_tag(tag[0])
+
+      parent = stack.last
+
+      new_node = Node.new(tag_data[:name], text, tag_data[:classes], tag_data[:id], [], parent)
+      parent[:children] << new_node unless parent.nil?
+      @root = new_node if parent.nil?
+      stack << new_node
+    end
   end
 
 
-  def parse_tag(data)
+  def parse_tag(full_tag)
 
     output = {}
 
-    # name_match = string.match(/<(\S+)\s?.*?>/)
-    output[:name] = data[1]
-    full_tag = data[0]
+    name_match = full_tag.match(/\A(\S+)\s?/)
+    output[:name] = name_match[1]
+
 
     output[:classes], output[:id] = nil, nil
 
@@ -94,23 +118,9 @@ class DOMReader
     output[:id] = id_match[1] unless id_match.nil?
 
 
-    #name_match = full_tag.match(/name=['"](.+?)['"]/)
-    #output[:name] = name_match[1]
-
     output
 
   end
 
-
-  def build_document_node
-    # new_node = Node.new()
-  end
-
-
-  def build_node(capture_data)
-    tag_data = parse_tag(capture_data)
-
-    new_node = Node.new(tag_data[:name], capture_data[2], "text", tag_data[:classes], tag_data[:id], "children", "parent")
-  end
 
 end
