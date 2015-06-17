@@ -39,6 +39,7 @@ Node = Struct.new(:name, :text, :classes, :id, :children, :parent)
 
 
 class DOMReader
+  attr_reader :root
 
   def initialize
     @root = nil
