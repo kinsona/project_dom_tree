@@ -1,6 +1,34 @@
 =begin
 
-Process to build the DOM tree:
+How to run the DOM Reader:
+
+1) Load in the DOM Reader file on the command line:
+  $ load "dom_reader.rb"
+
+2) Create a new reader, which will automatically build out the DOM tree:
+  $ tree = DOMReader.new("test.html")
+
+3) Create a renderer and a searcher using the tree:
+  $ renderer = NodeRenderer.new(tree)
+  $ searcher = TreeSearcher.new(tree)
+
+4) The searcher can search the tree in 3 different ways:
+
+  Search the whole tree:
+  $ searcher.search_by(:name, "div")
+
+  Search from a specific node downward through the tree, including the starting node:
+  $ searcher.search_children(:name, "div")
+
+  Search from a specific node downward through the tree, excluding the starting node:
+  $ searcher.search_ancestors(:name, "div")
+
+5) The renderer can be used to display summary info about a specific node.  Leave out the argument to target the root node:
+  $ renderer.render(node)
+
+
+
+Thought process on building the DOM tree:
 
 0) Create Node struct with fields (name, text, classes, id, children, parent)
 1) Identify and capture shallowest depth of nodes:
@@ -43,9 +71,15 @@ Node = Struct.new(:name, :text, :classes, :id, :children, :parent)
 class DOMReader
   attr_reader :root
 
-  def initialize
+  def initialize(html_file)
     @root = nil
+    tree = build_tree(html_file)
+    renderer = NodeRenderer.new(tree)
+    searcher = TreeSearcher.new(tree)
   end
+
+
+  private
 
 
   def build_tree(html_file)
@@ -56,9 +90,6 @@ class DOMReader
     build_relationships(file_text)
 
   end
-
-
-  private
 
 
   def load_file(filename)

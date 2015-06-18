@@ -1,6 +1,3 @@
-#require './dom_reader.rb'
-
-
 class NodeRenderer
 
   def initialize(tree)
