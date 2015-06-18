@@ -41,7 +41,7 @@ class TreeSearcher
     until queue.empty?
       check_node = queue.shift
 
-      output << check_node if field_match?(check_node, field, value)
+      output << check_node if match?(check_node, field, value)
 
       check_node.children.each { |child| queue << child }
     end
@@ -51,13 +51,38 @@ class TreeSearcher
   end
 
 
-  def field_match?(node, field, value)
+  def match?(node, field, value)
+    if value.is_a?(Regexp)
+      regex_match?(node, field, value)
+    else
+      value_match?(node, field, value)
+    end
+  end
+
+
+  def value_match?(node, field, value)
+
     if field == :class
       node[:classes] ||= []
       node[:classes].include?(value)
     else
       node[field] == value
     end
+
+  end
+
+
+  def regex_match?(node, field, regex)
+
+    if field == :class
+      node[:classes] ||= []
+      results = node[:classes].grep(regex)
+      !results.empty?
+    else
+      results = node[field].match(regex)
+      !results.nil?
+    end
+
   end
 
 end
