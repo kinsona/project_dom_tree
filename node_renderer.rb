@@ -1,4 +1,4 @@
-require './dom_reader.rb'
+#require './dom_reader.rb'
 
 
 class NodeRenderer

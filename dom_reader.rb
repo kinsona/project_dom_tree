@@ -34,6 +34,8 @@ Second thoughts:
 
 =end
 
+require './node_renderer.rb'
+require './tree_searcher.rb'
 
 Node = Struct.new(:name, :text, :classes, :id, :children, :parent)
 
